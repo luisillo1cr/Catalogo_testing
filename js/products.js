@@ -1,10 +1,10 @@
-// js/services/products.js
+// js/products.js
 import { db, storage } from './firebase.js';
 import {
   collection,
   getDocs,
   query,
-  where,             // ◀───── ¡Importa where!
+  where,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -18,7 +18,6 @@ import {
   uploadBytes,
   getDownloadURL
 } from 'https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js';
-
 
 // Trae sólo los productos activos para catálogo público
 export async function fetchAllProducts() {
@@ -48,10 +47,12 @@ export async function addProduct(data, file) {
   return addDoc(collection(db, 'products'), data);
 }
 
+// Actualiza un producto (solo campos individuales)
 export function updateProduct(id, updates) {
   return updateDoc(doc(db, 'products', id), updates);
 }
 
+// Elimina un producto
 export function deleteProduct(id) {
   return deleteDoc(doc(db, 'products', id));
 }
@@ -75,4 +76,54 @@ export async function topSold(limitCount = 1) {
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Crea un producto subiendo de 1 a 4 imágenes.
+ * data = objeto con campos name, price, stock, active, description, category, tags, details
+ * files = FileList con entre 1 y 4 imágenes
+ */
+export async function addProductMulti(data, files) {
+  if (!files || files.length < 1) {
+    throw new Error('Debes subir al menos una imagen.');
+  }
+  if (files.length > 4) {
+    throw new Error('No puedes subir más de 4 imágenes.');
+  }
+  // Sube y obtén URL de cada imagen
+  const urls = await Promise.all(
+    Array.from(files).map(file => {
+      const imgRef = ref(storage, `products/${Date.now()}_${file.name}`);
+      return uploadBytes(imgRef, file).then(() => getDownloadURL(imgRef));
+    })
+  );
+  data.images    = urls;
+  data.views     = 0;
+  data.sold      = 0;
+  data.active    = true;
+  data.createdAt = serverTimestamp();
+  return addDoc(collection(db, 'products'), data);
+}
+
+/**
+ * Actualiza un producto y opcionalmente reemplaza sus imágenes si se proporcionan nuevas.
+ * id = ID del producto
+ * data = objeto con los campos a actualizar
+ * files = FileList (0 a 4) para nuevas imágenes
+ */
+export async function updateProductMulti(id, data, files) {
+  if (files && files.length > 0) {
+    if (files.length > 4) {
+      throw new Error('No puedes subir más de 4 imágenes.');
+    }
+    const urls = await Promise.all(
+      Array.from(files).map(file => {
+        const imgRef = ref(storage, `products/${Date.now()}_${file.name}`);
+        return uploadBytes(imgRef, file).then(() => getDownloadURL(imgRef));
+      })
+    );
+    data.images = urls;
+  }
+  data.updatedAt = serverTimestamp();
+  return updateDoc(doc(db, 'products', id), data);
 }
