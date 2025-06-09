@@ -31,7 +31,7 @@
       >
         <i class="bi bi-list fs-3"></i>
       </button>
-      <a class="navbar-brand mx-auto" href="index.html">
+      <a class="navbar-brand mx-auto" href="./index.html">
         <img src="./img/logo.png" alt="Logo" height="40" />
       </a>
       <button id="btn-logout" class="btn btn-secondary">
@@ -184,14 +184,18 @@
                 <input name="size" class="form-control" />
               </div>
               <div class="col-12">
-                <label class="form-label">Imagen</label>
+                <label class="form-label">Imágenes (máx. 4)</label>
                 <input
                   type="file"
-                  name="image"
+                  name="images"
                   accept="image/*"
                   class="form-control"
+                  multiple
                   required
                 />
+                <div class="form-text">
+                  Selecciona entre 1 y 4 imágenes para este producto.
+                </div>
               </div>
             </div>
           </div>
