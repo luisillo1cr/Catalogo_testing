@@ -19,6 +19,7 @@ import {
   getDownloadURL
 } from 'https://www.gstatic.com/firebasejs/10.4.0/firebase-storage.js';
 
+
 // Trae sólo los productos activos para catálogo público
 export async function fetchAllProducts() {
   const q    = query(
@@ -47,7 +48,7 @@ export async function addProduct(data, file) {
   return addDoc(collection(db, 'products'), data);
 }
 
-// Actualiza un producto (solo campos individuales)
+// Actualiza un producto (solo campos concretos)
 export function updateProduct(id, updates) {
   return updateDoc(doc(db, 'products', id), updates);
 }
@@ -78,9 +79,10 @@ export async function topSold(limitCount = 1) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
+
 /**
  * Crea un producto subiendo de 1 a 4 imágenes.
- * data = objeto con campos name, price, stock, active, description, category, tags, details
+ * data  = objeto con campos name, price, stock, active, description, category, tags, details
  * files = FileList con entre 1 y 4 imágenes
  */
 export async function addProductMulti(data, files) {
@@ -90,7 +92,7 @@ export async function addProductMulti(data, files) {
   if (files.length > 4) {
     throw new Error('No puedes subir más de 4 imágenes.');
   }
-  // Sube y obtén URL de cada imagen
+  // Sube cada imagen y obtiene su URL
   const urls = await Promise.all(
     Array.from(files).map(file => {
       const imgRef = ref(storage, `products/${Date.now()}_${file.name}`);
@@ -106,10 +108,10 @@ export async function addProductMulti(data, files) {
 }
 
 /**
- * Actualiza un producto y opcionalmente reemplaza sus imágenes si se proporcionan nuevas.
- * id = ID del producto
- * data = objeto con los campos a actualizar
- * files = FileList (0 a 4) para nuevas imágenes
+ * Actualiza un producto y reemplaza sus imágenes si se proporcionan nuevas.
+ * id    = ID del producto
+ * data  = objeto con campos a actualizar
+ * files = FileList con nuevas imágenes (0 a 4)
  */
 export async function updateProductMulti(id, data, files) {
   if (files && files.length > 0) {
