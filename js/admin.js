@@ -10,12 +10,13 @@ import {
 } from './meta.js';
 import {
   fetchAllProductsAdmin as fetchAllProducts,
-  addProduct,
-  updateProduct,
+  addProductMulti,
+  updateProductMulti,
   deleteProduct,
   topViewed,
   topSold
 } from './products.js';
+
 
 let adminProducts = [];
 let prodModal, prodForm;
@@ -120,14 +121,19 @@ async function openProductModal(id) {
 // Maneja submit de producto
 async function onProductSubmit(e) {
   e.preventDefault();
-  // Toma el primer fichero (imagen principal)
-  const file = prodForm.image.files[0];
 
-  // 1) Obtén los tags seleccionados del <select multiple>
-  const selectedTags = Array.from(prodForm.tags.selectedOptions)
-    .map(opt => opt.value);
+  // 1) Recoge el FileList
+  const files = prodForm.images.files;
 
-  // 2) Construye el objeto data
+  // 2) Validaciones
+  if (!files.length) {
+    return alert('Debes seleccionar al menos 1 imagen.');
+  }
+  if (files.length > 4) {
+    return alert('No puedes subir más de 4 imágenes.');
+  }
+
+  // 3) Construye el objeto data
   const data = {
     name:        prodForm.name.value.trim(),
     price:       Number(prodForm.price.value),
@@ -135,7 +141,7 @@ async function onProductSubmit(e) {
     active:      prodForm.active.checked,
     description: prodForm.description.value.trim(),
     category:    prodForm.category.value,
-    tags:        selectedTags,
+    tags:        Array.from(prodForm.tags.selectedOptions).map(o => o.value),
     details: {
       color: prodForm.color.value.trim(),
       talla: prodForm.size.value.trim()
@@ -144,19 +150,19 @@ async function onProductSubmit(e) {
 
   try {
     if (editingId) {
-      // Editar producto existente
-      await updateProduct(editingId, data, file);
+      // Editamos: si hay imágenes nuevas, reemplazan a las antiguas
+      await updateProductMulti(editingId, data, files);
     } else {
-      // Crear nuevo producto
-      await addProduct(data, file);
+      // Creamos
+      await addProductMulti(data, files);
     }
-    // Cerrar modal y recargar tabla
     prodModal.hide();
     await loadAdmin();
   } catch (err) {
-    alert('Error: ' + err.message);
+    alert('Error al guardar producto: ' + err.message);
   }
 }
+
 
 
 // Carga tabla y métricas
