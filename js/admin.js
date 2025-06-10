@@ -123,7 +123,7 @@ async function onProductSubmit(e) {
   e.preventDefault();
 
   // 1) Recoge el FileList
-  const files = prodForm.imagess.files;
+  const files = prodForm.images.files;
 
   // 2) Validaciones
   if (!files.length) {
