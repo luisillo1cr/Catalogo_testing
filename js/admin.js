@@ -92,7 +92,7 @@ async function loadProductFormMeta() {
 async function openProductModal(id) {
   editingId = id;
   prodForm.reset();
-  prodForm.image.required = id ? false : true;
+  prodForm.images.required = id ? false : true;
   prodForm.querySelector('.modal-title').textContent =
     id ? 'Editar Producto' : 'Agregar Producto';
   await loadProductFormMeta();
@@ -123,7 +123,7 @@ async function onProductSubmit(e) {
   e.preventDefault();
 
   // 1) Recoge el FileList
-  const files = prodForm.images.files;
+  const files = prodForm.imagess.files;
 
   // 2) Validaciones
   if (!files.length) {
