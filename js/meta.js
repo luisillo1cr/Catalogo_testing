@@ -42,3 +42,14 @@ export function addTag(name) {
 export function deleteTag(id) {
   return deleteDoc(doc(db, 'tags', id));
 }
+
+export async function fetchSizes() {
+  const snap = await getDocs(collection(db, 'sizes'));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+export function addSize(name) {
+  return addDoc(collection(db, 'sizes'), { name });
+}
+export function deleteSize(id) {
+  return deleteDoc(doc(db, 'sizes', id));
+}

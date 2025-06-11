@@ -2,26 +2,35 @@
 import { fetchAllProducts }             from './products.js';
 import { onAuthChange, isAdmin }        from './auth.js';
 import { addToCartLocal, getCartTotal } from './cart.js';
+import { db }                           from './firebase.js';
+import {
+  collection,
+  onSnapshot
+} from 'https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js';
 
-const productList = document.getElementById('product-list');
-const adminLink   = document.getElementById('admin-link');
+const productList  = document.getElementById('product-list');
+const adminLink    = document.getElementById('admin-link');
+const catFilter    = document.getElementById('filter-type');
+const sizeFilter   = document.getElementById('filter-size');
+const priceInput   = document.getElementById('filter-price');
+const priceValue   = document.getElementById('price-value');
+const priceMax     = document.getElementById('price-max');
 
 let allProducts = [];
 
-// Creamos un formateador de colones
+// Formateador de colones
 const colonFormatter = new Intl.NumberFormat('es-CR', {
-  style:                'currency',
-  currency:             'CRC',
+  style:   'currency',
+  currency:'CRC',
   minimumFractionDigits: 0,
   maximumFractionDigits: 2
 });
 
-// 1️⃣ Carga inicial de productos
+// --- 1️⃣ Carga inicial de productos ---
 async function loadProducts() {
   try {
     allProducts = await fetchAllProducts();
-    console.log('🔥 Productos cargados:', allProducts);
-    applyFilters();  // muestra los activos al inicio
+    applyFilters();
   } catch (err) {
     console.error('Error cargando productos:', err);
     productList.innerHTML =
@@ -29,31 +38,36 @@ async function loadProducts() {
   }
 }
 
-// 2️⃣ Filtrado según controles
+// --- 2️⃣ Filtro ---
 function applyFilters() {
-  const selectedCategory = document.getElementById('filter-type').value;
-  const selectedSize     = document.getElementById('filter-size').value;
-  const maxPrice         = Number(document.getElementById('filter-price').value);
+  const selectedCategory = catFilter.value;
+  const selectedSize     = sizeFilter.value;
+  const maxPrice         = Number(priceInput.value);
 
   let filtered = allProducts.filter(p => p.active);
 
+  // Categoría
   if (selectedCategory) {
     filtered = filtered.filter(p =>
-      Array.isArray(p.category) &&
-      p.category.includes(selectedCategory)
+      p.category === selectedCategory ||
+      (Array.isArray(p.category) && p.category.includes(selectedCategory))
     );
   }
+  // Talla
   if (selectedSize) {
     filtered = filtered.filter(p =>
-      p.details?.talla === selectedSize
+      Array.isArray(p.sizes) && p.sizes.includes(selectedSize)
     );
   }
-  filtered = filtered.filter(p => typeof p.price === 'number' && p.price <= maxPrice);
+  // Precio
+  filtered = filtered.filter(p =>
+    typeof p.price === 'number' && p.price <= maxPrice
+  );
 
   renderProducts(filtered);
 }
 
-// 3️⃣ Render de tarjetas
+// --- 3️⃣ Render de tarjetas ---
 function renderProducts(products) {
   productList.innerHTML = '';
   if (!products.length) {
@@ -64,52 +78,101 @@ function renderProducts(products) {
     const col = document.createElement('div');
     col.className = 'col-12 col-sm-6 col-md-4 col-lg-3';
     col.innerHTML = `
-      <div class="card h-100">
+      <div class="card h-100 product-card" style="cursor:pointer">
         <div class="card-img-container">
           ${p.tags?.[0] ? `<span class="card-tag">${p.tags[0]}</span>` : ''}
-          <img src="${p.imageURL}" class="card-img-top" alt="${p.name}">
+          <img src="${(p.images?.[0] || p.imageURL)}" class="card-img-top" alt="${p.name}">
         </div>
         <div class="card-body d-flex flex-column">
           <h6 class="card-title">${p.name}</h6>
-          <p class="mt-auto fw-bold">
-            ${colonFormatter.format(p.price)}
-          </p>
-          <button class="btn btn-primary mt-2">Agregar</button>
+          <p class="mt-auto fw-bold">${colonFormatter.format(p.price)}</p>
+          <button class="btn btn-primary mt-2 add-to-cart-btn">Agregar</button>
         </div>
       </div>`;
-    col.querySelector('button').onclick = () => {
+    
+    // Click en tarjeta abre la ficha técnica
+    col.querySelector('.card').addEventListener('click', e => {
+      if (!e.target.classList.contains('add-to-cart-btn')) {
+        showProductDetail(p);
+      }
+    });
+    // Agregar al carrito
+    col.querySelector('.add-to-cart-btn').onclick = ev => {
+      ev.stopPropagation();
       addToCartLocal(p.id);
       document.getElementById('cart-count').textContent = getCartTotal();
     };
+
     productList.appendChild(col);
   });
 }
 
-// 4️⃣ Inicialización al cargar el DOM
+// --- 3️⃣.1️⃣ Ficha técnica (igual que admin) ---
+function showProductDetail(product) {
+  const title = document.getElementById('productDetailTitle');
+  const body  = document.getElementById('productDetailBody');
+  title.textContent = product.name;
+
+  const images = Array.isArray(product.images) && product.images.length
+    ? product.images
+    : product.imageURL
+      ? [product.imageURL]
+      : [];
+
+  const imagesHtml = images.length
+    ? `<div class="product-gallery mb-3">
+         ${images.map(u => `<img src="${u}" alt="${product.name}">`).join('')}
+       </div>`
+    : '';
+
+  body.innerHTML = `
+    ${imagesHtml}
+    <dl class="row mb-2">
+      <dt class="col-5 col-md-3">Nombre:</dt><dd class="col-7 col-md-9">${product.name}</dd>
+      <dt class="col-5 col-md-3">Precio:</dt><dd class="col-7 col-md-9">${colonFormatter.format(product.price)}</dd>
+      <dt class="col-5 col-md-3">Stock:</dt><dd class="col-7 col-md-9">${product.stock}</dd>
+      <dt class="col-5 col-md-3">Categoría:</dt><dd class="col-7 col-md-9">${product.category}</dd>
+      <dt class="col-5 col-md-3">Tallas:</dt><dd class="col-7 col-md-9">${(product.sizes||[]).join(', ')}</dd>
+      <dt class="col-5 col-md-3">Tags:</dt><dd class="col-7 col-md-9">${(product.tags||[]).join(', ')}</dd>
+      <dt class="col-5 col-md-3">Color:</dt><dd class="col-7 col-md-9">${product.details?.color||'-'}</dd>
+      <dt class="col-5 col-md-3">Descripción:</dt><dd class="col-7 col-md-9">${product.description||'-'}</dd>
+    </dl>
+  `;
+  new bootstrap.Modal(document.getElementById('productDetailModal')).show();
+}
+
+// --- Sincroniza dinámico de categorías y tallas ---
+function initDynamicFilters() {
+  onSnapshot(collection(db,'categories'), snap => {
+    catFilter.innerHTML = '<option value="">Todos</option>' +
+      snap.docs.map(d => `<option>${d.data().name}</option>`).join('');
+    applyFilters();
+  });
+  onSnapshot(collection(db,'sizes'), snap => {
+    sizeFilter.innerHTML = '<option value="">Todas</option>' +
+      snap.docs.map(d => `<option>${d.data().name}</option>`).join('');
+    applyFilters();
+  });
+}
+
+// --- 4️⃣ Inicialización ---
 document.addEventListener('DOMContentLoaded', () => {
+  initDynamicFilters();
   loadProducts();
 
   // Slider de precio
-  const priceInput = document.getElementById('filter-price');
-  const priceVal   = document.getElementById('price-value');
-  const priceMaxEl = document.getElementById('price-max');
-
-  // Init valores formateados
-  priceVal.textContent   = priceInput.value;
-  priceMaxEl.textContent = priceInput.max;
-
-  // Al mover el slider
+  priceValue.textContent = priceInput.value;
+  priceMax.textContent   = priceInput.max;
   priceInput.addEventListener('input', () => {
-    priceVal.textContent = priceInput.value;
+    priceValue.textContent = priceInput.value;
     applyFilters();
   });
 
-  // Al cambiar categoría o talla
-  document.getElementById('filter-type').addEventListener('change', applyFilters);
-  document.getElementById('filter-size').addEventListener('change', applyFilters);
+  catFilter.addEventListener('change', applyFilters);
+  sizeFilter.addEventListener('change', applyFilters);
 });
 
-// 5️⃣ Mostrar enlace admin si corresponde
+// --- 5️⃣ Enlace admin ---
 onAuthChange(async user => {
   if (user && await isAdmin(user.uid)) {
     adminLink.classList.remove('d-none');

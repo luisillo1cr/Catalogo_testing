@@ -35,19 +35,8 @@ function showToast(message, type = 'success', duration = 3000) {
   toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
 }
 
-/**
- * Si estamos en auth.html (móvil), redirige a index.html tras un pequeño delay.
- */
-function maybeRedirectHome() {
-  if (window.location.pathname.endsWith('auth.html')) {
-    setTimeout(() => {
-      window.location.href = 'index.html';
-    }, 500); // deja 0.5s para que se vea el toast
-  }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  // — Elementos (pueden ser null en auth.html vs index.html)
+  // — Obtención segura de elementos (pueden no existir)
   const btnOpenAuth  = document.getElementById('btn-open-auth');
   const btnLogout    = document.getElementById('btn-logout');
   const authModalEl  = document.getElementById('authModal');
@@ -68,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // — Cerrar sesión
+  // — Cerrar sesión (botón independiente)
   if (btnLogout) {
     btnLogout.addEventListener('click', async () => {
       try {
@@ -96,7 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
           document.body.classList.remove('modal-open');
           document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
         }
-        maybeRedirectHome();
       } catch (err) {
         showToast(`Error al ingresar: ${err.message}`, 'danger');
       }
@@ -130,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
           document.body.classList.remove('modal-open');
           document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
         }
-        maybeRedirectHome();
       } catch (err) {
         showToast(`Error al registrarse: ${err.message}`, 'danger');
       }
@@ -147,7 +134,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.remove('modal-open');
         document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
       }
-      maybeRedirectHome();
     } catch (err) {
       showToast(`Error con Google: ${err.message}`, 'danger');
     }
@@ -155,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnGoogleLg)  btnGoogleLg.addEventListener('click',  googleFlow);
   if (btnGoogleReg) btnGoogleReg.addEventListener('click', googleFlow);
 
-  // — Detectar cambios de autenticación y mostrar Admin
+  // — Detectar cambios de autenticación
   onAuthChange(async user => {
     const adminLink = document.getElementById('admin-link');
     if (user) {
